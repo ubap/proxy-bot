@@ -4,7 +4,8 @@ import java.nio.charset.StandardCharsets;
 
 public class PacketInterpreter {
 
-    private int[] XTEAkey = new int[4]; // 128-bit key as an array of four 32-bit integers
+
+    int[] expandedKey;
 
     public void initialFromClient(NetworkMessage networkMessage) {
         networkMessage.getShort(); // idk what it is, maybe encoded length;
@@ -18,13 +19,14 @@ public class PacketInterpreter {
         RSADecode.decode(networkMessage.access128Bytes());
 
         if (networkMessage.getByte() != 0) {
-            throw new IllegalStateException("RSA DECRYUPTION FAILED");
-        };
-
-        XTEAkey[0] = networkMessage.getInt32();
-        XTEAkey[1] = networkMessage.getInt32();
-        XTEAkey[2] = networkMessage.getInt32();
-        XTEAkey[3] = networkMessage.getInt32();
+            throw new IllegalStateException("RSA decryption failed. Shutting down.");
+        }
+        int[] xteaKey = new int[4]; // 128-bit key as an array of four 32-bit integers
+        xteaKey[0] = networkMessage.getInt32();
+        xteaKey[1] = networkMessage.getInt32();
+        xteaKey[2] = networkMessage.getInt32();
+        xteaKey[3] = networkMessage.getInt32();
+        expandedKey = XTEA.expandKey(xteaKey);
 
         int gamemaster = networkMessage.getByte(); //gamemaster flag
 
@@ -38,9 +40,6 @@ public class PacketInterpreter {
     }
 
     public void fromClient(NetworkMessage networkMessage) {
-
-        int[] expandedKey = XTEA.expandKey(XTEAkey);
-
         XTEA.decrypt(networkMessage.accessPayload(), expandedKey);
         System.out.println(byteBufferToHex(networkMessage.accessPayload()));
 
