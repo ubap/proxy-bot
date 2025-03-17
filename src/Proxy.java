@@ -69,11 +69,14 @@ public class Proxy {
                     // 2 byte length
                     // 4 byte checksum
                     input.readNBytes(readBuffer, 0, 6);
-                    int length = (readBuffer[1] << 8) | (readBuffer[0] & 0xFF);
+                    ByteBuffer header = ByteBuffer.wrap(readBuffer).order(ByteOrder.LITTLE_ENDIAN);
+                    int payloadBlocks = header.getShort();
+                    input.readNBytes(readBuffer, 6, payloadBlocks * 8);
 
-                    input.readNBytes(readBuffer, 6, length * 8);
+                    socketToClient.getOutputStream().write(readBuffer, 0, payloadBlocks * 8 + 6);
 
-                    socketToClient.getOutputStream().write(readBuffer, 0, length * 8 + 6);
+                    NetworkMessage networkMessage = new NetworkMessage(header, readBuffer);
+                    packetInterpreter.fromServer(networkMessage);
                 }
 
             } catch (IOException e) {

@@ -47,7 +47,7 @@ public class PacketInterpreter {
 
     public void fromClient(NetworkMessage networkMessage) {
         XTEA.decrypt(networkMessage.accessPayload(), expandedKey);
-        System.out.println(byteBufferToHex(networkMessage.accessPayload()));
+        // System.out.println(byteBufferToHex(networkMessage.accessPayload()));
 
         ByteBuffer header = networkMessage.header();
         header.getShort();
@@ -70,7 +70,30 @@ public class PacketInterpreter {
                 }
             }
         }
+    }
 
+    public void fromServer(NetworkMessage networkMessage) {
+        if (expandedKey == null) {
+          return;
+        }
+
+        int seq = networkMessage.header().getInt(2);
+        boolean glib = (seq >>> 31) == 1;
+        // System.out.println("glib="+glib);
+
+        XTEA.decrypt(networkMessage.accessPayload(), expandedKey);
+
+        byte fill = networkMessage.getByte();
+
+        byte opCode = networkMessage.getByte();
+
+        switch (opCode) {
+            case 0x1E:
+            case 0x1D:
+                // dont log ping
+                return;
+        }
+        System.out.println(byteBufferToHex(networkMessage.accessPayload()));
     }
 
     public static String bytesToHex(byte[] bytes) {
