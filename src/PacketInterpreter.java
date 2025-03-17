@@ -1,11 +1,17 @@
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.concurrent.ArrayBlockingQueue;
 
 public class PacketInterpreter {
-
+    ArrayBlockingQueue<byte[]> queueToServer;
 
     int[] expandedKey;
+
+    PacketInterpreter(ArrayBlockingQueue<byte[]> queueToServer) {
+        this.queueToServer = queueToServer;
+    }
 
     public void initialFromClient(NetworkMessage networkMessage) {
         networkMessage.getShort(); // idk what it is, maybe encoded length;
@@ -57,6 +63,11 @@ public class PacketInterpreter {
 
                 String text = networkMessage.getString();
                 System.out.println(text);
+                if (text.equals("hej")) {
+                    XTEA.encrypt(networkMessage.accessPayload(), expandedKey);
+                    byte[] bytes = Arrays.copyOfRange(networkMessage.accessPayload().array(), 0, networkMessage.payloadBlocks() * 8 + 6);
+                    queueToServer.add(bytes);
+                }
             }
         }
 

@@ -4,18 +4,25 @@ import java.io.InputStream;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.Arrays;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Proxy {
 
+    ArrayBlockingQueue<byte[]> queueToServer = new ArrayBlockingQueue<>(100);
 
     public Proxy(Socket socketToClient, Socket socketToServer) {
-        PacketInterpreter packetInterpreter = new PacketInterpreter();
+        PacketInterpreter packetInterpreter = new PacketInterpreter(queueToServer);
         Thread clientThread = new Thread(() -> {
             byte[] readBuffer = new byte[1024 * 1024];
             try (InputStream input = socketToClient.getInputStream()) {
                 // the intro from client is "IglaOts" - it's most likely a custom packet for IglaOts - but I did not verify it.
                 byte[] introFromClient = input.readNBytes(8);
                 System.out.println("Received intro packet from client: " + new String(introFromClient));
+
+                // skip quwuw bcus this doesmt  seq
                 socketToServer.getOutputStream().write(introFromClient);
 
 
@@ -29,7 +36,11 @@ public class Proxy {
 
                     input.readNBytes(readBuffer, 6, payloadBlocks * 8);
 
-                    socketToServer.getOutputStream().write(readBuffer, 0, payloadBlocks * 8 + 6);
+
+                    byte[] dataToSend = Arrays.copyOfRange(readBuffer, 0, payloadBlocks * 8 + 6);
+                    queueToServer.add(dataToSend);
+
+                    // socketToServer.getOutputStream().write(readBuffer, 0, payloadBlocks * 8 + 6);
 
 
 
@@ -71,6 +82,27 @@ public class Proxy {
             }
         });
 
+        AtomicInteger seq = new AtomicInteger();
+        Thread serverWriteThread = new Thread(() -> {
+            try {
+                while (true) {
+                    byte[] item = queueToServer.poll(1, TimeUnit.MINUTES);
+                    ByteBuffer buffer = ByteBuffer.wrap(item).order(ByteOrder.LITTLE_ENDIAN);
+                    buffer.putInt(2, seq.getAndIncrement());
+
+                    // System.out.println(PacketInterpreter.bytesToHex(item));
+
+                    socketToServer.getOutputStream().write(item);
+
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+
+        serverWriteThread.start();
         clientThread.start();
         serverThread.start();
     }
