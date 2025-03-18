@@ -18,16 +18,13 @@ public class XTEA {
         return expanded;
     }
 
-
     public static void decrypt(ByteBuffer dataBuffer, int[] k) {
         int count = dataBuffer.remaining();
-
-        byte data[] = Arrays.copyOfRange(dataBuffer.array(), 6, 6 + count);
-
+        int startPosition = dataBuffer.position();
         for (int i = k.length; i > 0; i -= 2) {
-            for (int offset = 0; offset < data.length; offset += 8) {
-                ByteBuffer buffer = ByteBuffer.wrap(data, offset, 8);
-                buffer.order(ByteOrder.LITTLE_ENDIAN); // Important: Specify byte order
+            for (int offset = 0; offset < count; offset += 8) {
+                ByteBuffer buffer = ByteBuffer.wrap(dataBuffer.array(), startPosition + offset, 8);
+                buffer.order(ByteOrder.LITTLE_ENDIAN);
 
                 int left = buffer.getInt();
                 int right = buffer.getInt();
@@ -35,25 +32,22 @@ public class XTEA {
                 right -= ((left << 4 ^ left >>> 5) + left) ^ k[i - 1];
                 left -= ((right << 4 ^ right >>> 5) + right) ^ k[i - 2];
 
-                buffer.position(offset);
+                buffer.position(startPosition + offset);
                 buffer.putInt(left);
                 buffer.putInt(right);
             }
         }
-
-        for (int i =0; i < count; i++) {
-            dataBuffer.array()[dataBuffer.position() + i] = data[i];
-        }
+        dataBuffer.position(startPosition);
     }
 
     public static void encrypt(ByteBuffer dataBuffer, int[] k) {
         int count = dataBuffer.remaining();
+        int startPosition = dataBuffer.position();
 
-        byte data[] = Arrays.copyOfRange(dataBuffer.array(), 6, 6 + count);
         for (int i = 0; i < k.length; i += 2) {
-            for (int offset = 0; offset < data.length; offset += 8) {
+            for (int offset = 0; offset < count; offset += 8) {
 
-                ByteBuffer buffer = ByteBuffer.wrap(data, offset, 8);
+                ByteBuffer buffer = ByteBuffer.wrap(dataBuffer.array(), startPosition + offset, 8);
                 buffer.order(ByteOrder.LITTLE_ENDIAN); // Important: Specify byte order
 
                 int left = buffer.getInt();
@@ -62,14 +56,10 @@ public class XTEA {
                 left += ((right << 4 ^ right >>> 5) + right) ^ k[i];
                 right += ((left << 4 ^ left >>> 5) + left) ^ k[i + 1];
 
-                buffer.position(offset); // Go back to the beginning of the buffer
+                buffer.position(startPosition + offset);
                 buffer.putInt(left);
                 buffer.putInt(right);
             }
-        }
-
-        for (int i =0; i < count; i++) {
-            dataBuffer.array()[dataBuffer.position() + i] = data[i];
         }
     }
 
