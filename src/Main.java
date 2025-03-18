@@ -1,4 +1,5 @@
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -16,14 +17,18 @@ public class Main {
             System.out.println("Server is listening on port " + port);
 
             while (true) {
-                Socket socketToClient = serverSocket.accept();
-                System.out.println("New client connected, connecting to server");
-                Socket socketToServer = new Socket(serverAddress, port);
-                System.out.println("Connected to server");
+                try {
+                    Socket socketToClient = serverSocket.accept();
+                    System.out.println("New client connected, connecting to server");
+                    Socket socketToServer = new Socket(serverAddress, port);
+                    System.out.println("Connected to server");
 
 
-                new Proxy(socketToClient, socketToServer);
+                    new Proxy(socketToClient, socketToServer);
 
+                } catch (ConnectException connectException) {
+                    connectException.printStackTrace();
+                }
 
             }
         } catch (IOException ex) {
