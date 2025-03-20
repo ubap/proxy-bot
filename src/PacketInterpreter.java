@@ -1,8 +1,9 @@
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.zip.DataFormatException;
+import java.util.zip.Inflater;
 
 public class PacketInterpreter {
     ArrayBlockingQueue<byte[]> queueToServer;
@@ -46,7 +47,7 @@ public class PacketInterpreter {
     }
 
     public void fromClient(NetworkMessage networkMessage) {
-        XTEA.decrypt(networkMessage.accessPayload(), expandedKey);
+        XTEA.decrypt(networkMessage.dataBuffer(), expandedKey);
         // System.out.println(byteBufferToHex(networkMessage.accessPayload()));
 
         ByteBuffer header = networkMessage.header();
@@ -57,15 +58,14 @@ public class PacketInterpreter {
 
         byte opCode = networkMessage.getByte();
         if (opCode == (byte) 0x96) { // say
-
             short speakClass = networkMessage.getByte(); // speak class
             if (speakClass == 1 /*say*/) {
 
                 String text = networkMessage.getString();
                 System.out.println(text);
                 if (text.equals("hej")) {
-                    XTEA.encrypt(networkMessage.accessPayload(), expandedKey);
-                    byte[] bytes = Arrays.copyOfRange(networkMessage.accessPayload().array(), 0, networkMessage.payloadBlocks() * 8 + 6);
+                    XTEA.encrypt(networkMessage.dataBuffer(), expandedKey);
+                    byte[] bytes = Arrays.copyOfRange(networkMessage.dataBuffer().array(), 0, networkMessage.payloadBlocks() * 8 + 6);
                     queueToServer.add(bytes);
                 }
             }
@@ -78,22 +78,121 @@ public class PacketInterpreter {
         }
 
         int seq = networkMessage.header().getInt(2);
-        boolean glib = (seq >>> 31) == 1;
-        // System.out.println("glib="+glib);
+        boolean zlibCompressed = (seq >>> 31) == 1;
+        seq = seq & (0xFFFFFFFF >>> 1);
+        // System.out.println("zlib="+zlib);
 
-        XTEA.decrypt(networkMessage.accessPayload(), expandedKey);
 
-        byte fill = networkMessage.getByte();
+        XTEA.decrypt(networkMessage.dataBuffer(), expandedKey);
+        byte fill = networkMessage.getByte(); // how many fill bytes are there at the end
+        networkMessage.setFillBytes(fill);
 
-        byte opCode = networkMessage.getByte();
 
-        switch (opCode) {
-            case 0x1E:
-            case 0x1D:
-                // dont log ping
-                return;
+        if (zlibCompressed) {
+
+            Inflater inflater = new Inflater(true);
+
+            ByteBuffer byteBuffer = networkMessage.dataBuffer();
+            byteBuffer.get(); // skip fill
+            byteBuffer.mark();
+
+            int lengthBefore = byteBuffer.remaining();
+            ByteBuffer buffer = ByteBuffer.wrap(byteBuffer.array(), byteBuffer.position(), byteBuffer.remaining());
+
+            inflater.setInput(buffer);
+
+            byte[] output = new byte[1024*1024]; // Adjust size if needed
+            int lengthAfter = 0;
+            try {
+                lengthAfter = inflater.inflate(output);
+            } catch (DataFormatException e) {
+                e.printStackTrace();
+            }
+
+            byteBuffer.limit(byteBuffer.limit() + lengthAfter - lengthBefore);
+            byteBuffer.put(output, 0, lengthAfter);
+            byteBuffer.reset();
+
+            networkMessage.setFillBytes(0);
+            networkMessage.setLimit(byteBuffer.limit() + lengthAfter - lengthBefore);
+
+
+            inflater.end();
         }
-        System.out.println(byteBufferToHex(networkMessage.accessPayload()));
+
+
+
+
+        // it will be some effort to parse everything
+        // brute force try to parse update stats packet - maybe it is somewhere.
+
+        int charstatsSize = 50; // dummy val
+        for (int i = 0; i <  networkMessage.dataBuffer().remaining() - 1 /* OpCode */- charstatsSize; i++) {
+            try {
+                ByteBuffer dataBuffer = networkMessage.dataBuffer();
+                dataBuffer.get(); // skip fill
+                dataBuffer.position(dataBuffer.position() + i);
+
+                byte opCode = dataBuffer.get();
+                if (opCode != (byte) 0xA0) {
+                    continue;
+                }
+
+                int hp = dataBuffer.getInt();
+                int maxHp = dataBuffer.getInt();
+                int cap = dataBuffer.getInt();
+                long exp = dataBuffer.getLong();
+
+                short level = dataBuffer.getShort();
+                byte percent = dataBuffer.get();
+
+                short clientExpDisplay = dataBuffer.getShort();
+                short lowLevelBonusDysplay = dataBuffer.getShort();
+                short storeExpBonus = dataBuffer.getShort();
+                short staminaBonus = dataBuffer.getShort();
+
+                int mana = dataBuffer.getInt();
+                int maxMana = dataBuffer.getInt();
+
+                if (hp <= maxHp && hp >= 0 && maxHp > 0 && exp >= 0 && mana <=  maxMana) {
+                    // potentially thats it
+                    System.out.println("stats packet found, hp = %d, maxHp = %d, mana = %d, maxMana = %d, cap = %d, exp =%d, seq = %d, pos = %d"
+                            .formatted(hp, maxHp, mana, maxMana, cap, exp, seq, i));
+
+                    //break; // - don't break - try to match another xA0 packet in this message
+                }
+            } catch (Exception e) {
+
+            }
+
+        }
+
+
+
+        // ignore this path for now
+
+//        byte opCode = networkMessage.getByte();
+//        switch (opCode) {
+//            case 0x1E:// ping
+//            case 0x1D: // ping
+//                return;
+//
+//            case (byte) 0xEE: // resource balance
+//                byte resourceType = networkMessage.getByte();
+//                long amount = networkMessage.getInt64();
+//
+//                System.out.printf("ResourceType=%d, amount=%d\n", resourceType, amount);
+//                break;
+//            case (byte) 0xAA: // channel message
+//                networkMessage.getInt32(); // something
+//                String author = networkMessage.getString(); // author
+//                networkMessage.skipBytes(9); // no idea
+//                String text = networkMessage.getString(); // text
+//
+//                System.out.printf("channel message author=%s, text=%s\n", author, text);
+//
+//        }
+        //System.out.println(byteBufferToHex(networkMessage.accessPayload()));
     }
 
     public static String bytesToHex(byte[] bytes) {

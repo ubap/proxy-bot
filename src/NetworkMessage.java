@@ -6,7 +6,9 @@ public class NetworkMessage {
     private static final int HEADER_LENGTH = 6;
 
     private final ByteBuffer header;
-    private final ByteBuffer payload;
+    private final ByteBuffer data;
+    private int fill = 0;
+
 
 
     /**
@@ -16,12 +18,24 @@ public class NetworkMessage {
      */
     public NetworkMessage(ByteBuffer header, byte[] bytes) {
         this.header = header;
-        payload = ByteBuffer.wrap(bytes, HEADER_LENGTH, payloadBlocks() * 8).order(ByteOrder.LITTLE_ENDIAN);
-        //payload.position();
+        data = ByteBuffer.wrap(bytes, HEADER_LENGTH, payloadBlocks() * 8).order(ByteOrder.LITTLE_ENDIAN);
     }
 
     public ByteBuffer header() {
         return header;
+    }
+
+
+    public void setFillBytes(int fillBytes) {
+        if (fillBytes >= 8) {
+            throw new RuntimeException(" fill bytes must be < 8");
+        }
+        data.limit(data.limit() - fillBytes);
+        fill = fillBytes; // this can be somehow extracted from data buffer,
+    }
+
+    public void setLimit(int newLimit) {
+        data.limit(newLimit);
     }
 
     public int payloadBlocks() {
@@ -29,37 +43,41 @@ public class NetworkMessage {
     }
 
     public byte getByte() {
-       return payload.get();
+       return data.get();
     }
 
     public short getShort() {
-        return payload.getShort();
+        return data.getShort();
     }
 
     public int getInt32() {
-        return payload.getInt();
+        return data.getInt();
+    }
+
+    public long getInt64() {
+        return data.getLong();
     }
 
     public String getString() {
         int  strlen = getShort();
         byte[] stringBackingArray = new byte[strlen];
-        payload.get(stringBackingArray);
+        data.get(stringBackingArray);
         return new String(stringBackingArray);
     }
 
     public boolean getBool() {
-        return payload.get() == 0x01;
+        return data.get() == 0x01;
     }
 
     public void skipBytes(int n) {
-        payload.position(payload.position() + n);
+        data.position(data.position() + n);
     }
 
     public ByteBuffer access128Bytes() {
-        return ByteBuffer.wrap(payload.array(), payload.position(), 128);
+        return ByteBuffer.wrap(data.array(), data.position(), 128);
     }
 
-    public ByteBuffer accessPayload() {
-        return ByteBuffer.wrap(payload.array(), HEADER_LENGTH, payloadBlocks() * 8).order(ByteOrder.LITTLE_ENDIAN);
+    public ByteBuffer dataBuffer() {
+        return ByteBuffer.wrap(data.array(), HEADER_LENGTH, data.limit()).order(ByteOrder.LITTLE_ENDIAN);
     }
 }
