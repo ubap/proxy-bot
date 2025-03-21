@@ -79,39 +79,24 @@ public class MessageInterpreter {
     }
 
     public PacketsFromServer fromServer(Message networkMessage) {
-        if (expandedKey == null) {
-            System.out.println("XTEA key not set yet.");
-            return null;
+        if (expandedKey != null) {
+            XTEA.decrypt(networkMessage.dataBuffer(), expandedKey);
         }
-        XTEA.decrypt(networkMessage.dataBuffer(), expandedKey);
+        int fillBytes = networkMessage.getByte();
 
         if (networkMessage.isZlibCompressed()) {
-            System.out.println("zlib compressed");
-            Inflater inflater = new Inflater(true);
-
             ByteBuffer byteBuffer = networkMessage.dataBuffer();
-            int fillBytes = byteBuffer.get(); // skip fill
-            // big question ?! - do we want to decrompress fill bytes? I asumme not.
-            byteBuffer.limit( byteBuffer.limit() - fillBytes);
+            byteBuffer.get(); // skip fill
+            // big question ?! - do we want to decompress fill bytes? I assume not.
+            byteBuffer.limit( byteBuffer.limit() - fillBytes); // limit the length by fill bytes
+            
+            ByteBuffer inflatedData = Zlib.inflate(byteBuffer);
 
-            int lengthBefore = byteBuffer.remaining();
-
-            inflater.setInput(byteBuffer);
-
-            byte[] output = new byte[1024 * 1024]; // Adjust size if needed
-            int lengthAfter = 0;
-            try {
-                lengthAfter = inflater.inflate(output);
-            } catch (DataFormatException e) {
-                e.printStackTrace();
-            }
-
-            inflater.end();
-            return new PacketsFromServer(networkMessage, ByteBuffer.wrap(output, 0, lengthAfter).order(ByteOrder.LITTLE_ENDIAN), true);
+            return new PacketsFromServer(networkMessage, inflatedData, true);
         }
 
         ByteBuffer packetsBuffer = networkMessage.dataBuffer();
-        int fillBytes = packetsBuffer.get(); // skip fill bytes
+        packetsBuffer.get(); // skip fill bytes
         packetsBuffer.limit( packetsBuffer.limit() - fillBytes);
 
         return new PacketsFromServer(networkMessage, packetsBuffer, false);
