@@ -52,31 +52,31 @@ public class MessageInterpreter {
         System.out.println("initial packet from client parsed. CharName = " + charName);
     }
 
-    public void fromClient(NetworkMessage networkMessage) {
-        XTEA.decrypt(networkMessage.dataBuffer(), expandedKey);
-        // System.out.println(byteBufferToHex(networkMessage.accessPayload()));
-
-        ByteBuffer header = networkMessage.header();
-        header.getShort();
-        int checksum = header.getInt();
-
-        byte fill = networkMessage.getByte();
-
-        byte opCode = networkMessage.getByte();
-        if (opCode == (byte) 0x96) { // say
-            short speakClass = networkMessage.getByte(); // speak class
-            if (speakClass == 1 /*say*/) {
-
-                String text = networkMessage.getString();
-                System.out.println(text);
-                if (text.equals("hej")) {
-                    XTEA.encrypt(networkMessage.dataBuffer(), expandedKey);
-                    byte[] bytes = Arrays.copyOfRange(networkMessage.dataBuffer().array(), 0, networkMessage.payloadBlocks() * 8 + 6);
-                    queueToServer.add(bytes);
-                }
-            }
-        }
-    }
+//    public void fromClient(NetworkMessage networkMessage) {
+//        XTEA.decrypt(networkMessage.dataBuffer(), expandedKey);
+//        // System.out.println(byteBufferToHex(networkMessage.accessPayload()));
+//
+//        ByteBuffer header = networkMessage.header();
+//        header.getShort();
+//        int checksum = header.getInt();
+//
+//        byte fill = networkMessage.getByte();
+//
+//        byte opCode = networkMessage.getByte();
+//        if (opCode == (byte) 0x96) { // say
+//            short speakClass = networkMessage.getByte(); // speak class
+//            if (speakClass == 1 /*say*/) {
+//
+//                String text = networkMessage.getString();
+//                System.out.println(text);
+//                if (text.equals("hej")) {
+//                    XTEA.encrypt(networkMessage.dataBuffer(), expandedKey);
+//                    byte[] bytes = Arrays.copyOfRange(networkMessage.dataBuffer().array(), 0, networkMessage.payloadBlocks() * 8 + 6);
+//                    queueToServer.add(bytes);
+//                }
+//            }
+//        }
+//    }
 
     public PacketsFromServer fromServer(Message networkMessage) {
         if (expandedKey != null) {
