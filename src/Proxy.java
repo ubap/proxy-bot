@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class Proxy {
 
-    ArrayBlockingQueue<byte[]> queueToServer = new ArrayBlockingQueue<>(100);
+    ArrayBlockingQueue<Message> queueToServer = new ArrayBlockingQueue<>(100);
 
     public Proxy(Socket socketToClient, Socket socketToServer) {
         MessageInterpreter messageInterpreter = new MessageInterpreter(queueToServer);
@@ -31,15 +31,15 @@ public class Proxy {
                 boolean initialPacket = true;
                 while (true) {
                     Message messageFromClient = Message.readFromStream(input);
-                    byte[] dataToSend = Arrays.copyOfRange(messageFromClient.getBackingArray(), 0, messageFromClient.messageLength());
-                    queueToServer.add(dataToSend);
+                    queueToServer.add(messageFromClient.duplicate());
+                    //socketToServer.getOutputStream().write(messageFromClient.duplicate().getBackingArray(), 0, messageFromClient.messageLength());
 
                     if (initialPacket) {
                         messageInterpreter.initialFromClient(messageFromClient);
                     }
-//                    else {
-//                        packetInterpreter.fromClient(networkMessage);
-//                    }
+                    else {
+                        messageInterpreter.fromClient(messageFromClient);
+                    }
 
                     initialPacket = false;
                 }
@@ -49,7 +49,8 @@ public class Proxy {
             }
         });
 
-        PacketsFromServerInterpreter packetsFromServerInterpreter = new PacketsFromServerInterpreter();
+        Game game = new Game();
+        PacketsFromServerInterpreter packetsFromServerInterpreter = new PacketsFromServerInterpreter(game);
         Thread serverThread = new Thread(() -> {
             try (InputStream input = socketToServer.getInputStream()) {
                 boolean initial = true;
@@ -70,18 +71,16 @@ public class Proxy {
         Thread serverWriteThread = new Thread(() -> {
             try {
                 while (true) {
-                    byte[] item = queueToServer.poll(1, TimeUnit.MINUTES);
-                    ByteBuffer buffer = ByteBuffer.wrap(item).order(ByteOrder.LITTLE_ENDIAN);
-                    buffer.putInt(2, seq.getAndIncrement());
+                    Message messageToSend = queueToServer.poll(1, TimeUnit.MINUTES);
+                    messageToSend.setSequence(seq.getAndIncrement());
 
-                    // System.out.println(PacketInterpreter.bytesToHex(item));
-
-                    socketToServer.getOutputStream().write(item);
+                    socketToServer.getOutputStream().write(messageToSend.getBackingArray(), 0, messageToSend.messageLength());
 
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-            } catch (IOException e) {
+            }
+            catch (IOException e) {
                 throw new RuntimeException(e);
             }
         });

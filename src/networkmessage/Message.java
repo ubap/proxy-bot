@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.Arrays;
 
 public class Message {
     public static final int HEADER_LENGTH = 6; // 2 bytes - length, 4 bytes - sequence
@@ -14,6 +15,13 @@ public class Message {
         buffer = ByteBuffer.allocate(1024 * 1024).order(ByteOrder.LITTLE_ENDIAN);
     }
 
+    private Message(byte[] backingArray, int limit) {
+
+        this.buffer = ByteBuffer.wrap(Arrays.copyOf(backingArray, limit), 0, limit).order(ByteOrder.LITTLE_ENDIAN);
+
+        buffer.position(HEADER_LENGTH);
+    }
+
     public static Message readFromStream(InputStream inputStream) throws IOException {
         Message message = new Message();
         inputStream.readNBytes(message.getBackingArray(), 0, Message.HEADER_LENGTH);
@@ -22,6 +30,10 @@ public class Message {
         message.buffer.position(HEADER_LENGTH);
         message.buffer.limit(message.messageLength());
         return message;
+    }
+
+    public Message duplicate() {
+        return new Message(buffer.array(), messageLength());
     }
 
     public byte[] getBackingArray() {
@@ -46,12 +58,20 @@ public class Message {
         return buffer.duplicate().position(HEADER_LENGTH).order(ByteOrder.LITTLE_ENDIAN);
     }
 
+    public ByteBuffer headerBuffer() {
+        return buffer.duplicate().position(0).limit(HEADER_LENGTH).order(ByteOrder.LITTLE_ENDIAN);
+    }
+
     public boolean isZlibCompressed() {
         return (buffer.getInt(2) >>> 31) == 1;
     }
 
     public int getSequence() {
         return buffer.getInt(2) & (0xFFFFFFFF >>> 1);
+    }
+
+    public void setSequence(int seq) {
+        buffer.putInt(2, seq);
     }
 
     // data accessors below

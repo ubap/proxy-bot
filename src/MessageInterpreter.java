@@ -14,12 +14,12 @@ import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
 public class MessageInterpreter {
-    ArrayBlockingQueue<byte[]> queueToServer;
+    ArrayBlockingQueue<Message> queueToServer;
 
     int[] expandedKey;
     CountDownLatch xteaSet = new CountDownLatch(1);
 
-    MessageInterpreter(ArrayBlockingQueue<byte[]> queueToServer) {
+    MessageInterpreter(ArrayBlockingQueue<Message> queueToServer) {
         this.queueToServer = queueToServer;
     }
 
@@ -56,31 +56,25 @@ public class MessageInterpreter {
         System.out.println("initial packet from client parsed. CharName = " + charName);
     }
 
-//    public void fromClient(NetworkMessage networkMessage) {
-//        XTEA.decrypt(networkMessage.dataBuffer(), expandedKey);
-//        // System.out.println(byteBufferToHex(networkMessage.accessPayload()));
-//
-//        ByteBuffer header = networkMessage.header();
-//        header.getShort();
-//        int checksum = header.getInt();
-//
-//        byte fill = networkMessage.getByte();
-//
-//        byte opCode = networkMessage.getByte();
-//        if (opCode == (byte) 0x96) { // say
-//            short speakClass = networkMessage.getByte(); // speak class
-//            if (speakClass == 1 /*say*/) {
-//
-//                String text = networkMessage.getString();
-//                System.out.println(text);
-//                if (text.equals("hej")) {
-//                    XTEA.encrypt(networkMessage.dataBuffer(), expandedKey);
-//                    byte[] bytes = Arrays.copyOfRange(networkMessage.dataBuffer().array(), 0, networkMessage.payloadBlocks() * 8 + 6);
-//                    queueToServer.add(bytes);
-//                }
-//            }
-//        }
-//    }
+    public void fromClient(Message networkMessage) {
+        XTEA.decrypt(networkMessage.dataBuffer(), expandedKey);
+        byte fill = networkMessage.getByte();
+
+        byte opCode = networkMessage.getByte();
+        if (opCode == (byte) 0x96) { // say
+            short speakClass = networkMessage.getByte(); // speak class
+            if (speakClass == 1 /*say*/) {
+
+                String text = networkMessage.getString();
+                System.out.println(text);
+                System.out.println(byteBufferToHex(networkMessage.dataBuffer().position(0)));
+                if (text.equals("hej")) {
+                    XTEA.encrypt(networkMessage.dataBuffer(), expandedKey);
+                    queueToServer.add(networkMessage);
+                }
+            }
+        }
+    }
 
     public PacketsFromServer fromServer(Message networkMessage, boolean xtea) {
         if (xtea) {
@@ -150,8 +144,11 @@ public class MessageInterpreter {
     public static String byteBufferToHex(ByteBuffer bytes) {
         StringBuilder sb = new StringBuilder();
         try {
+            String separator = "";
             while (true) {
-                sb.append(String.format("%02X ", bytes.get())); // %02X ensures 2-digit uppercase hex
+                sb.append(separator);
+                sb.append(String.format("0x%02X ", bytes.get())); // %02X ensures 2-digit uppercase hex
+                separator = ", ";
             }
         } catch (BufferUnderflowException e) {
 

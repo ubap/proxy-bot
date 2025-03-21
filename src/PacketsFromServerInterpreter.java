@@ -4,6 +4,12 @@ import java.nio.ByteBuffer;
 
 public class PacketsFromServerInterpreter {
 
+    private final Game game;
+
+    public PacketsFromServerInterpreter(Game game) {
+        this.game = game;
+    }
+
     public void process(PacketsFromServer packetsFromServer) {
         bruteForceSearchStatsPacket(packetsFromServer);
     }
@@ -64,6 +70,11 @@ public class PacketsFromServerInterpreter {
                     // potentially thats it
                     System.out.println("stats packet found, hp = %d, maxHp = %d, mana = %d, maxMana = %d, cap = %d, level = %d, percent = %d, exp =%d, seq = %d, pos = %d"
                             .formatted(hp, maxHp, mana, maxMana, cap, level, percent, exp, packetsFromServer.getMessage().getSequence(), i));
+
+                    game.setHp(hp);
+                    game.setMaxHp(maxHp);
+                    game.setMana(mana);
+                    game.setMaxMana(maxMana);
 
                     //break; // - don't break - try to match another xA0 packet in this message
                 }
