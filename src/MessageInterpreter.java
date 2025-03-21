@@ -8,6 +8,8 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
@@ -15,6 +17,7 @@ public class MessageInterpreter {
     ArrayBlockingQueue<byte[]> queueToServer;
 
     int[] expandedKey;
+    CountDownLatch xteaSet = new CountDownLatch(1);
 
     MessageInterpreter(ArrayBlockingQueue<byte[]> queueToServer) {
         this.queueToServer = queueToServer;
@@ -40,6 +43,7 @@ public class MessageInterpreter {
         xteaKey[2] = message.getInt32();
         xteaKey[3] = message.getInt32();
         expandedKey = XTEA.expandKey(xteaKey);
+        xteaSet.countDown();
 
         int gamemaster = message.getByte(); //gamemaster flag
 
@@ -78,17 +82,24 @@ public class MessageInterpreter {
 //        }
 //    }
 
-    public PacketsFromServer fromServer(Message networkMessage) {
-        if (expandedKey != null) {
+    public PacketsFromServer fromServer(Message networkMessage, boolean xtea) {
+        if (xtea) {
+            try {
+                xteaSet.await();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
             XTEA.decrypt(networkMessage.dataBuffer(), expandedKey);
         }
-        int fillBytes = networkMessage.getByte();
+        byte fillBytes = networkMessage.getByte();
 
         if (networkMessage.isZlibCompressed()) {
             ByteBuffer byteBuffer = networkMessage.dataBuffer();
             byteBuffer.get(); // skip fill
             // big question ?! - do we want to decompress fill bytes? I assume not.
-            byteBuffer.limit( byteBuffer.limit() - fillBytes); // limit the length by fill bytes
+            int newLimit = byteBuffer.limit() - fillBytes;
+            // System.out.println("old limit: %d, new limit: %d".formatted(byteBuffer.limit(), newLimit));
+            byteBuffer.limit( newLimit); // limit the length by fill bytes
             
             ByteBuffer inflatedData = Zlib.inflate(byteBuffer);
 

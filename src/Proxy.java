@@ -30,14 +30,12 @@ public class Proxy {
 
                 boolean initialPacket = true;
                 while (true) {
-                    Message message = Message.readFromStream(input);
-
-                    byte[] dataToSend = Arrays.copyOfRange(message.getBackingArray(), 0, message.messageLength());
+                    Message messageFromClient = Message.readFromStream(input);
+                    byte[] dataToSend = Arrays.copyOfRange(messageFromClient.getBackingArray(), 0, messageFromClient.messageLength());
                     queueToServer.add(dataToSend);
 
-
                     if (initialPacket) {
-                        messageInterpreter.initialFromClient(message);
+                        messageInterpreter.initialFromClient(messageFromClient);
                     }
 //                    else {
 //                        packetInterpreter.fromClient(networkMessage);
@@ -46,61 +44,22 @@ public class Proxy {
                     initialPacket = false;
                 }
 
-
             } catch (IOException e) {
                 e.printStackTrace();
             }
         });
 
+        PacketsFromServerInterpreter packetsFromServerInterpreter = new PacketsFromServerInterpreter();
         Thread serverThread = new Thread(() -> {
             try (InputStream input = socketToServer.getInputStream()) {
+                boolean initial = true;
                 while (true) {
                     Message message = Message.readFromStream(input);
                     socketToClient.getOutputStream().write(message.getBackingArray(), 0, message.messageLength());
-                    PacketsFromServer packetsFromServer = messageInterpreter.fromServer(message);
-                    if (packetsFromServer == null) {
-                        continue;
-                    }
-
-                    int charstatsSize = 50; // dummy val
-                    for (int i = 0; i < packetsFromServer.getPacketsData().remaining() - 1 /* OpCode */ - charstatsSize; i++) {
-                        try {
-                            ByteBuffer dataBuffer = packetsFromServer.getPacketsData();
-                            dataBuffer.get(); // skip fill
-                            dataBuffer.position(dataBuffer.position() + i);
-
-                            byte opCode = dataBuffer.get();
-                            if (opCode != (byte) 0xA0) {
-                                continue;
-                            }
-
-                            int hp = dataBuffer.getInt();
-                            int maxHp = dataBuffer.getInt();
-                            int cap = dataBuffer.getInt();
-                            long exp = dataBuffer.getLong();
-
-                            short level = dataBuffer.getShort();
-                            byte percent = dataBuffer.get();
-
-                            short clientExpDisplay = dataBuffer.getShort();
-                            short lowLevelBonusDysplay = dataBuffer.getShort();
-                            short storeExpBonus = dataBuffer.getShort();
-                            short staminaBonus = dataBuffer.getShort();
-
-                            int mana = dataBuffer.getInt();
-                            int maxMana = dataBuffer.getInt();
-
-                            if (hp <= maxHp && hp >= 0 && maxHp > 0 && exp >= 0 && mana <= maxMana) {
-                                // potentially thats it
-                                System.out.println("stats packet found, hp = %d, maxHp = %d, mana = %d, maxMana = %d, cap = %d, exp =%d, seq = %d, pos = %d"
-                                        .formatted(hp, maxHp, mana, maxMana, cap, exp, packetsFromServer.getMessage().getSequence(), i));
-
-                                //break; // - don't break - try to match another xA0 packet in this message
-                            }
-                        } catch (Exception e) {
-
-                        }
-                    }
+                    boolean useXtea = !initial;
+                    PacketsFromServer packetsFromServer = messageInterpreter.fromServer(message, useXtea);
+                    packetsFromServerInterpreter.process(packetsFromServer);
+                    initial = false;
                 }
             } catch (IOException e) {
                 e.printStackTrace();

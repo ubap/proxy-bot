@@ -51,7 +51,7 @@ public class LoginServer {
                 // Send the request and get the response
                 HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
                 String responseText = response.body();
-                responseText = responseText.replaceAll("146.59.53.55", "192.168.1.18");
+                responseText = responseText.replaceAll("146.59.53.55", "192.168.1.93");
                 // Print response body
                 System.out.println("Response: " + responseText);
                 exchange.sendResponseHeaders(200, responseText.length());

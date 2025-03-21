@@ -20,7 +20,7 @@ public class PacketsFromServer {
     }
 
     public ByteBuffer getPacketsData() {
-        return ByteBuffer.wrap(packetsData.array(), packetsData.arrayOffset(), packetsData.limit()).order(ByteOrder.LITTLE_ENDIAN);
+        return packetsData.duplicate().order(ByteOrder.LITTLE_ENDIAN);
     }
 
     public Message getMessage() {

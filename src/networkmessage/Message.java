@@ -43,7 +43,7 @@ public class Message {
     }
 
     public ByteBuffer dataBuffer() {
-        return buffer.duplicate().position(HEADER_LENGTH);
+        return buffer.duplicate().position(HEADER_LENGTH).order(ByteOrder.LITTLE_ENDIAN);
     }
 
     public boolean isZlibCompressed() {

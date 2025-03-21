@@ -16,7 +16,7 @@ public class Zlib {
         try {
             lengthAfter = inflater.inflate(output);
         } catch (DataFormatException e) {
-            throw new RuntimeException("Zlib inflate failed");
+            e.printStackTrace();
         }
 
         System.out.println("Zlib inflate, lengthBefore=%d, lengthAfter=%d".formatted(lengthBefore, lengthAfter));
