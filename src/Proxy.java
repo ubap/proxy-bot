@@ -1,4 +1,5 @@
 import networkmessage.Message;
+import networkmessage.PacketsFromServer;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,33 +16,16 @@ public class Proxy {
     ArrayBlockingQueue<byte[]> queueToServer = new ArrayBlockingQueue<>(100);
 
     public Proxy(Socket socketToClient, Socket socketToServer) {
-        PacketInterpreter packetInterpreter = new PacketInterpreter(queueToServer);
+        MessageInterpreter messageInterpreter = new MessageInterpreter(queueToServer);
         Thread clientThread = new Thread(() -> {
-            ByteBuffer readBuffer = ByteBuffer.allocateDirect(1024 * 1024);
             try (InputStream input = socketToClient.getInputStream()) {
                 // the intro from client is "IglaOts" - it's most likely a custom packet for IglaOts - but I did not verify it.
                 byte[] introFromClient = input.readNBytes(8);
-                System.out.println("Received intro packet from client: " + new String(introFromClient));
-
-                // skip quwuw bcus this doesmt  seq
+                if (!new String(introFromClient, 0, 8).equals("IglaOTS\n")) {
+                    throw new RuntimeException("First packet from client different than expected");
+                }
+                // skip queue because this is not a valid "Message", queue not needed yet.
                 socketToServer.getOutputStream().write(introFromClient);
-
-
-                // draft here
-                /*
-               
-
-                read header
-                read network message
-                send network message to the server (immediately, to avoid lag)
-
-
-                process network message
-
-
-
-                 */
-                // draft
 
 
                 boolean initialPacket = true;
@@ -53,7 +37,7 @@ public class Proxy {
 
 
                     if (initialPacket) {
-                        packetInterpreter.initialFromClient(message);
+                        messageInterpreter.initialFromClient(message);
                     }
 //                    else {
 //                        packetInterpreter.fromClient(networkMessage);
@@ -69,26 +53,56 @@ public class Proxy {
         });
 
         Thread serverThread = new Thread(() -> {
-            byte[] readBuffer = new byte[1024 * 1024];
-
             try (InputStream input = socketToServer.getInputStream()) {
-
                 while (true) {
-                    // 2 byte length
-                    // 4 byte checksum
-                    input.readNBytes(readBuffer, 0, 6);
-                    ByteBuffer header = ByteBuffer.wrap(readBuffer).order(ByteOrder.LITTLE_ENDIAN);
-                    int payloadBlocks = header.getShort();
-                    input.readNBytes(readBuffer, 6, payloadBlocks * 8);
+                    Message message = Message.readFromStream(input);
+                    socketToClient.getOutputStream().write(message.getBackingArray(), 0, message.messageLength());
+                    PacketsFromServer packetsFromServer = messageInterpreter.fromServer(message);
+                    if (packetsFromServer == null) {
+                        continue;
+                    }
 
-                    socketToClient.getOutputStream().write(readBuffer, 0, payloadBlocks * 8 + 6);
+                    int charstatsSize = 50; // dummy val
+                    for (int i = 0; i < packetsFromServer.getPacketsData().remaining() - 1 /* OpCode */ - charstatsSize; i++) {
+                        try {
+                            ByteBuffer dataBuffer = packetsFromServer.getPacketsData();
+                            dataBuffer.get(); // skip fill
+                            dataBuffer.position(dataBuffer.position() + i);
 
-                    NetworkMessage networkMessage = new NetworkMessage(header, readBuffer);
-                    packetInterpreter.fromServer(networkMessage);
+                            byte opCode = dataBuffer.get();
+                            if (opCode != (byte) 0xA0) {
+                                continue;
+                            }
+
+                            int hp = dataBuffer.getInt();
+                            int maxHp = dataBuffer.getInt();
+                            int cap = dataBuffer.getInt();
+                            long exp = dataBuffer.getLong();
+
+                            short level = dataBuffer.getShort();
+                            byte percent = dataBuffer.get();
+
+                            short clientExpDisplay = dataBuffer.getShort();
+                            short lowLevelBonusDysplay = dataBuffer.getShort();
+                            short storeExpBonus = dataBuffer.getShort();
+                            short staminaBonus = dataBuffer.getShort();
+
+                            int mana = dataBuffer.getInt();
+                            int maxMana = dataBuffer.getInt();
+
+                            if (hp <= maxHp && hp >= 0 && maxHp > 0 && exp >= 0 && mana <= maxMana) {
+                                // potentially thats it
+                                System.out.println("stats packet found, hp = %d, maxHp = %d, mana = %d, maxMana = %d, cap = %d, exp =%d, seq = %d, pos = %d"
+                                        .formatted(hp, maxHp, mana, maxMana, cap, exp, packetsFromServer.getMessage().getSequence(), i));
+
+                                //break; // - don't break - try to match another xA0 packet in this message
+                            }
+                        } catch (Exception e) {
+
+                        }
+                    }
                 }
-
             } catch (IOException e) {
-
                 e.printStackTrace();
             }
         });

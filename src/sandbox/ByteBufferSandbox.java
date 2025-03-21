@@ -11,15 +11,9 @@ public class ByteBufferSandbox {
 
         ByteBuffer buffer = ByteBuffer.wrap(backingArray, 2, 2);
 
-        buffer.get();
+        ByteBuffer byteBuffer = buffer.duplicate();
 
-        buffer.mark();
 
-        byte byteToDobule = buffer.get();
-        buffer.reset();
-        buffer.put((byte) (byteToDobule*2));
-        buffer.reset();
-
-        System.out.println(buffer.get());
+        System.out.println("stop");
     }
 }

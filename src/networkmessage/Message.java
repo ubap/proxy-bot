@@ -20,7 +20,7 @@ public class Message {
         inputStream.readNBytes(message.getBackingArray(), Message.HEADER_LENGTH, message.dataLength());
 
         message.buffer.position(HEADER_LENGTH);
-        message.buffer.limit(message.dataLength());
+        message.buffer.limit(message.messageLength());
         return message;
     }
 
@@ -41,6 +41,20 @@ public class Message {
     public int dataLength() {
         return buffer.getShort(0) * 8;
     }
+
+    public ByteBuffer dataBuffer() {
+        return buffer.duplicate().position(HEADER_LENGTH);
+    }
+
+    public boolean isZlibCompressed() {
+        return (buffer.getInt(2) >>> 31) == 1;
+    }
+
+    public int getSequence() {
+        return buffer.getInt(2) & (0xFFFFFFFF >>> 1);
+    }
+
+    // data accessors below
 
     public byte getByte() {
         return buffer.get();
