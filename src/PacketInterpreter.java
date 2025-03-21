@@ -1,5 +1,6 @@
 import encryption.RSADecode;
 import encryption.XTEA;
+import networkmessage.Message;
 
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
@@ -17,33 +18,33 @@ public class PacketInterpreter {
         this.queueToServer = queueToServer;
     }
 
-    public void initialFromClient(NetworkMessage networkMessage) {
-        networkMessage.getShort(); // idk what it is, maybe encoded length;
-        int systemVersion = networkMessage.getShort();
-        int clientVersionShort = networkMessage.getShort();
-        networkMessage.skipBytes(4); // client version 32 bit
-        String clientVersion = networkMessage.getString();
-        String datVersion = networkMessage.getString();
-        boolean previewState = networkMessage.getBool();
+    public void initialFromClient(Message message) {
+        message.getShort(); // idk what it is, maybe encoded length; maybe - fill bytes?
+        int systemVersion = message.getShort();
+        int clientVersionShort = message.getShort();
+        message.skipBytes(4); // client version 32 bit
+        String clientVersion = message.getString();
+        String datVersion = message.getString();
+        boolean previewState = message.getBool();
 
-        RSADecode.decode(networkMessage.access128Bytes());
+        RSADecode.decode(message.next128Bytes());
 
-        if (networkMessage.getByte() != 0) {
+        if (message.getByte() != 0) {
             throw new IllegalStateException("RSA decryption failed. Shutting down.");
         }
         int[] xteaKey = new int[4]; // 128-bit key as an array of four 32-bit integers
-        xteaKey[0] = networkMessage.getInt32();
-        xteaKey[1] = networkMessage.getInt32();
-        xteaKey[2] = networkMessage.getInt32();
-        xteaKey[3] = networkMessage.getInt32();
+        xteaKey[0] = message.getInt32();
+        xteaKey[1] = message.getInt32();
+        xteaKey[2] = message.getInt32();
+        xteaKey[3] = message.getInt32();
         expandedKey = XTEA.expandKey(xteaKey);
 
-        int gamemaster = networkMessage.getByte(); //gamemaster flag
+        int gamemaster = message.getByte(); //gamemaster flag
 
-        String sessionTokenBase64 = networkMessage.getString();
-        String charName = networkMessage.getString();
-        networkMessage.skipBytes(4); // timestamp
-        networkMessage.skipBytes(1); // randNumber
+        String sessionTokenBase64 = message.getString();
+        String charName = message.getString();
+        message.skipBytes(4); // timestamp
+        message.skipBytes(1); // randNumber
 
 
         System.out.println(charName);

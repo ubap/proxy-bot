@@ -1,4 +1,5 @@
-import java.io.BufferedInputStream;
+import networkmessage.Message;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.Socket;
@@ -16,7 +17,7 @@ public class Proxy {
     public Proxy(Socket socketToClient, Socket socketToServer) {
         PacketInterpreter packetInterpreter = new PacketInterpreter(queueToServer);
         Thread clientThread = new Thread(() -> {
-            byte[] readBuffer = new byte[1024 * 1024];
+            ByteBuffer readBuffer = ByteBuffer.allocateDirect(1024 * 1024);
             try (InputStream input = socketToClient.getInputStream()) {
                 // the intro from client is "IglaOts" - it's most likely a custom packet for IglaOts - but I did not verify it.
                 byte[] introFromClient = input.readNBytes(8);
@@ -26,30 +27,37 @@ public class Proxy {
                 socketToServer.getOutputStream().write(introFromClient);
 
 
+                // draft here
+                /*
+               
+
+                read header
+                read network message
+                send network message to the server (immediately, to avoid lag)
+
+
+                process network message
+
+
+
+                 */
+                // draft
+
+
                 boolean initialPacket = true;
                 while (true) {
-                    // 2 byte payloadBlocks
-                    // 4 byte checksum
-                    input.readNBytes(readBuffer, 0, 6);
-                    ByteBuffer header = ByteBuffer.wrap(readBuffer).order(ByteOrder.LITTLE_ENDIAN);
-                    int payloadBlocks = header.getShort();
+                    Message message = Message.readFromStream(input);
 
-                    input.readNBytes(readBuffer, 6, payloadBlocks * 8);
-
-
-                    byte[] dataToSend = Arrays.copyOfRange(readBuffer, 0, payloadBlocks * 8 + 6);
+                    byte[] dataToSend = Arrays.copyOfRange(message.getBackingArray(), 0, message.messageLength());
                     queueToServer.add(dataToSend);
 
-                    // socketToServer.getOutputStream().write(readBuffer, 0, payloadBlocks * 8 + 6);
 
-
-
-                    NetworkMessage networkMessage = new NetworkMessage(header, readBuffer);
                     if (initialPacket) {
-                        packetInterpreter.initialFromClient(networkMessage);
-                    } else {
-                        packetInterpreter.fromClient(networkMessage);
+                        packetInterpreter.initialFromClient(message);
                     }
+//                    else {
+//                        packetInterpreter.fromClient(networkMessage);
+//                    }
 
                     initialPacket = false;
                 }
