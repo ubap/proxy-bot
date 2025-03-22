@@ -1,4 +1,4 @@
-package sandbox;
+package jtrzebiatowski.sandbox;
 
 import java.nio.ByteBuffer;
 

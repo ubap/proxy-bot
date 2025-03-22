@@ -1,10 +1,10 @@
-package networkmessage;
+package jtrzebiatowski.networkmessage;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 
-import static networkmessage.Message.HEADER_LENGTH;
+import static jtrzebiatowski.networkmessage.Message.HEADER_LENGTH;
 
 public class PacketToServer {
     ByteBuffer buffer;

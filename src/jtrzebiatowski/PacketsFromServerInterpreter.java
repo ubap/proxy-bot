@@ -1,14 +1,16 @@
-import networkmessage.Game;
-import networkmessage.PacketsFromServer;
+package jtrzebiatowski;
+
+import jtrzebiatowski.game.GameState;
+import jtrzebiatowski.networkmessage.PacketsFromServer;
 
 import java.nio.ByteBuffer;
 
 public class PacketsFromServerInterpreter {
 
-    private final Game game;
+    private final GameState gameState;
 
-    public PacketsFromServerInterpreter(Game game) {
-        this.game = game;
+    public PacketsFromServerInterpreter(GameState gameState) {
+        this.gameState = gameState;
     }
 
     public void process(PacketsFromServer packetsFromServer) {
@@ -72,10 +74,10 @@ public class PacketsFromServerInterpreter {
                     System.out.println("stats packet found, hp = %d, maxHp = %d, mana = %d, maxMana = %d, cap = %d, level = %d, percent = %d, exp =%d, seq = %d, pos = %d"
                             .formatted(hp, maxHp, mana, maxMana, cap, level, percent, exp, packetsFromServer.getMessage().getSequence(), i));
 
-                    game.setHp(hp);
-                    game.setMaxHp(maxHp);
-                    game.setMana(mana);
-                    game.setMaxMana(maxMana);
+                    gameState.setHp(hp);
+                    gameState.setMaxHp(maxHp);
+                    gameState.setMana(mana);
+                    gameState.setMaxMana(maxMana);
 
                     //break; // - don't break - try to match another xA0 packet in this message
                 }

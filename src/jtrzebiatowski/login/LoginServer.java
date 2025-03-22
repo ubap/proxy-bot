@@ -1,4 +1,4 @@
-package login;
+package jtrzebiatowski.login;
 
 import com.sun.net.httpserver.HttpServer;
 
@@ -12,7 +12,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Responsible for hosting a proxy login server that replaces the game world ip on the fly to point to the proxy.
+ * Responsible for hosting a proxy jtrzebiatowski.login server that replaces the jtrzebiatowski.game world ip on the fly to point to the proxy.
  */
 public class LoginServer {
 

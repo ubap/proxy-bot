@@ -1,4 +1,4 @@
-package sandbox;
+package jtrzebiatowski.sandbox;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -6,9 +6,9 @@ import java.nio.ByteOrder;
 public class XTEASandbox {
 
     private static final int DELTA = 0x9E3779B9;
-    private static final int ROUNDS = 32; // encryption.XTEA does 32 cycles, 64 rounds
+    private static final int ROUNDS = 32; // jtrzebiatowski.encryption.XTEA does 32 cycles, 64 rounds
 
-    // Expand the key using the encryption.XTEA key expansion algorithm
+    // Expand the key using the jtrzebiatowski.encryption.XTEA key expansion algorithm
     private static int[] expandKey(int[] k) {
         int[] expanded = new int[ROUNDS * 2];
         for (int i = 0, sum = 0; i < expanded.length; i += 2) {

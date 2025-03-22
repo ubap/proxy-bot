@@ -1,9 +1,9 @@
-package networkmessage;
+package jtrzebiatowski.game;
 
 import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 
-public class Game {
+public class GameState {
 
     private int[] xteaExpandedKey;
     private final CountDownLatch xteaSet = new CountDownLatch(1);

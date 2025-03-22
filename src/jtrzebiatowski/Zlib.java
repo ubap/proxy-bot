@@ -1,3 +1,5 @@
+package jtrzebiatowski;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.zip.DataFormatException;
@@ -19,7 +21,7 @@ public class Zlib {
             e.printStackTrace();
         }
 
-        System.out.println("Zlib inflate, lengthBefore=%d, lengthAfter=%d".formatted(lengthBefore, lengthAfter));
+        System.out.println("jtrzebiatowski.Zlib inflate, lengthBefore=%d, lengthAfter=%d".formatted(lengthBefore, lengthAfter));
 
         inflater.end();
         return ByteBuffer.wrap(output, 0, lengthAfter).order(ByteOrder.LITTLE_ENDIAN);

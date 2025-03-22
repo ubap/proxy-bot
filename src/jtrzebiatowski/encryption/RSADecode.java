@@ -1,4 +1,4 @@
-package encryption;
+package jtrzebiatowski.encryption;
 
 import javax.crypto.Cipher;
 import java.math.BigInteger;

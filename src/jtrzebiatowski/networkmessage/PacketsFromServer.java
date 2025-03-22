@@ -1,4 +1,4 @@
-package networkmessage;
+package jtrzebiatowski.networkmessage;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -9,11 +9,11 @@ import java.nio.ByteOrder;
  */
 public class PacketsFromServer {
 
-    private final Message message;
+    private final jtrzebiatowski.networkmessage.Message message;
     private final ByteBuffer packetsData;
     private final boolean wasZlibCompressed;
 
-    public PacketsFromServer(Message message, ByteBuffer packetsData, boolean wasZlibCompressed) {
+    public PacketsFromServer(jtrzebiatowski.networkmessage.Message message, ByteBuffer packetsData, boolean wasZlibCompressed) {
         this.message = message;
         this.packetsData = packetsData;
         this.wasZlibCompressed = wasZlibCompressed;
@@ -23,7 +23,7 @@ public class PacketsFromServer {
         return packetsData.duplicate().order(ByteOrder.LITTLE_ENDIAN);
     }
 
-    public Message getMessage() {
+    public jtrzebiatowski.networkmessage.Message getMessage() {
         return message;
     }
 }

@@ -1,4 +1,6 @@
-import login.LoginServer;
+package jtrzebiatowski;
+
+import jtrzebiatowski.login.LoginServer;
 
 import java.io.IOException;
 import java.net.ConnectException;

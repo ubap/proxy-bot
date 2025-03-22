@@ -1,4 +1,4 @@
-package encryption;
+package jtrzebiatowski.encryption;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -6,9 +6,9 @@ import java.nio.ByteOrder;
 public class XTEA {
 
     private static final int DELTA = 0x9E3779B9;
-    private static final int ROUNDS = 32; // encryption.encryption.XTEA does 32 cycles, 64 rounds
+    private static final int ROUNDS = 32; // jtrzebiatowski.encryption.jtrzebiatowski.encryption.XTEA does 32 cycles, 64 rounds
 
-    // Expand the key using the encryption.encryption.XTEA key expansion algorithm
+    // Expand the key using the jtrzebiatowski.encryption.jtrzebiatowski.encryption.XTEA key expansion algorithm
     public static int[] expandKey(int[] k) {
         int[] expanded = new int[ROUNDS * 2];
         for (int i = 0, sum = 0; i < expanded.length; i += 2) {

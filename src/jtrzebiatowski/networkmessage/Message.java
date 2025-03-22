@@ -1,4 +1,4 @@
-package networkmessage;
+package jtrzebiatowski.networkmessage;
 
 import java.io.IOException;
 import java.io.InputStream;
