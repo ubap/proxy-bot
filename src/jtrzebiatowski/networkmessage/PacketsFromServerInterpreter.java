@@ -1,7 +1,6 @@
-package jtrzebiatowski;
+package jtrzebiatowski.networkmessage;
 
 import jtrzebiatowski.game.GameState;
-import jtrzebiatowski.networkmessage.PacketsFromServer;
 
 import java.nio.ByteBuffer;
 
@@ -14,18 +13,39 @@ public class PacketsFromServerInterpreter {
     }
 
     public void process(PacketsFromServer packetsFromServer) {
+        if (gameState.getPlayerId() == 0) {
+            bruteForceSearchClientFeatures(packetsFromServer);
+        }
+
         bruteForceSearchStatsPacket(packetsFromServer);
     }
 
-    private void bruteForceSearchStatsPacket(PacketsFromServer packetsFromServer) {
-
-
+    private void bruteForceSearchClientFeatures(PacketsFromServer packetsFromServer) {
         // brute force find stats packet
         int charstatsSize = 50; // dummy val
-        for (int i = 0; i < packetsFromServer.getPacketsData().remaining() - 1 /* OpCode */ - charstatsSize; i++) {
+        for (int i = 0; i < packetsFromServer.getPacketsData().remaining() - charstatsSize; i++) {
+            ByteBuffer dataBuffer = packetsFromServer.getPacketsData();
+            dataBuffer.position(dataBuffer.position() + i);
+            byte opCode = dataBuffer.get();
+            if (opCode != (byte) 0x17) {
+                continue;
+            }
+            int playerId = dataBuffer.getInt();
+            short beatDuration = dataBuffer.getShort();
+            if (beatDuration == 50) {
+                System.out.println("Found client features, playerId = %d".formatted(playerId));
+                gameState.setPlayerId(playerId);
+                return;
+            }
+
+        }
+    }
+
+    private void bruteForceSearchStatsPacket(PacketsFromServer packetsFromServer) {
+        int charstatsSize = 50; // dummy val
+        for (int i = 0; i < packetsFromServer.getPacketsData().remaining() - charstatsSize; i++) {
             try {
                 ByteBuffer dataBuffer = packetsFromServer.getPacketsData();
-                dataBuffer.get(); // skip fill
                 dataBuffer.position(dataBuffer.position() + i);
 
                 byte opCode = dataBuffer.get();
@@ -64,15 +84,15 @@ public class PacketsFromServerInterpreter {
                 byte expBoostInStore = dataBuffer.get();
 
 
-                if (hp <= maxHp&& hp >= 0 && maxHp > 0
+                if (hp <= maxHp && hp >= 0 && maxHp > 0
                         && exp >= 0
                         && mana <= maxMana
-                && expBoostInStore == 1
-                && baseSpeed > 0
-                && soul > 0 && soul <= 200) {
+                        && expBoostInStore == 1
+                        && baseSpeed > 0
+                        && soul > 0 && soul <= 200) {
                     // potentially thats it
-                    System.out.println("stats packet found, hp = %d, maxHp = %d, mana = %d, maxMana = %d, cap = %d, level = %d, percent = %d, exp =%d, seq = %d, pos = %d"
-                            .formatted(hp, maxHp, mana, maxMana, cap, level, percent, exp, packetsFromServer.getMessage().getSequence(), i));
+//                    System.out.println("stats packet found, hp = %d, maxHp = %d, mana = %d, maxMana = %d, cap = %d, level = %d, percent = %d, exp =%d, seq = %d, pos = %d"
+//                            .formatted(hp, maxHp, mana, maxMana, cap, level, percent, exp, packetsFromServer.getMessage().getSequence(), i));
 
                     gameState.setHp(hp);
                     gameState.setMaxHp(maxHp);

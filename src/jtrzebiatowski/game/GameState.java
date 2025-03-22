@@ -22,10 +22,19 @@ public class GameState {
         return xteaExpandedKey;
     }
 
+    private int playerId;
     private int maxHp;
     private int hp;
     private int maxMana;
     private int mana;
+
+    public void setPlayerId(int playerId) {
+        this.playerId = playerId;
+    }
+
+    public int getPlayerId() {
+        return playerId;
+    }
 
     public void setMaxHp(int maxHp) {
         this.maxHp = maxHp;

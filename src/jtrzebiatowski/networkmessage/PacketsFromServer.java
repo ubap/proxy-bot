@@ -19,6 +19,11 @@ public class PacketsFromServer {
         this.wasZlibCompressed = wasZlibCompressed;
     }
 
+    /**
+     * The position is set to the first byte after fill byte.
+     *
+     * @return
+     */
     public ByteBuffer getPacketsData() {
         return packetsData.duplicate().order(ByteOrder.LITTLE_ENDIAN);
     }

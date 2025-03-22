@@ -7,6 +7,9 @@ import jtrzebiatowski.networkmessage.MessageFactory;
 
 import java.util.concurrent.ArrayBlockingQueue;
 
+import static jtrzebiatowski.bot.ItemIds.GREAT_HEALTH_POTION;
+import static jtrzebiatowski.bot.ItemIds.MANA_POTION;
+
 
 public class Bot {
 
@@ -18,8 +21,37 @@ public class Bot {
         this.gameState = proxy.getGameState();
         this.messageFactory = proxy.getMessageFactory();
         this.queueToServer = proxy.getQueueToServer();
+    }
 
-        spellHeal(1200, 40, "exura ico");
+    public void start() {
+        spellHeal(1300, 40, "exura ico");
+        potions(450, 1000);
+    }
+
+    private void potions(int manaBelow, int hpBelow) {
+        new Thread(() -> {
+            while (true) {
+                try {
+                    if (gameState.getHp() < hpBelow) {
+                        Message mp = messageFactory.useItemOnYourself(GREAT_HEALTH_POTION);
+                        queueToServer.add(mp);
+                        Thread.sleep(500);
+                        continue;
+                    }
+
+                    if (gameState.getMana() < manaBelow) {
+                        Message mp = messageFactory.useItemOnYourself(MANA_POTION);
+                        queueToServer.add(mp);
+                        Thread.sleep(500);
+
+                    }
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+
+        }).start();
     }
 
     private void spellHeal(int hpBelow, int manaRequired, String spell) {

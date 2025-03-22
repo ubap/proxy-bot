@@ -1,21 +1,20 @@
-package jtrzebiatowski;
+package jtrzebiatowski.networkmessage;
 
+import jtrzebiatowski.Zlib;
 import jtrzebiatowski.encryption.RSADecode;
 import jtrzebiatowski.encryption.XTEA;
 import jtrzebiatowski.game.GameState;
-import jtrzebiatowski.networkmessage.Message;
-import jtrzebiatowski.networkmessage.PacketsFromServer;
 
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ArrayBlockingQueue;
 
 public class MessageInterpreter {
-    ArrayBlockingQueue<Message> queueToServer;
+    private final ArrayBlockingQueue<Message> queueToServer;
 
     private final GameState gameState;
 
-    MessageInterpreter(ArrayBlockingQueue<Message> queueToServer, GameState gameState) {
+    public MessageInterpreter(ArrayBlockingQueue<Message> queueToServer, GameState gameState) {
         this.queueToServer = queueToServer;
         this.gameState = gameState;
     }
@@ -55,28 +54,32 @@ public class MessageInterpreter {
 
     public void fromClient(Message networkMessage) {
         XTEA.decrypt(networkMessage.dataBuffer(), gameState.getXteaKey());
-        byte fill = networkMessage.getByte();
 
-        byte opCode = networkMessage.getByte();
-        if (opCode == (byte) 0x96) { // say
-            short speakClass = networkMessage.getByte(); // speak class
-            if (speakClass == 1 /*say*/) {
+        // uncomment to log all from client
+        // System.out.println(byteBufferToHex(networkMessage.dataBuffer().position(0)));
 
-                String text = networkMessage.getString();
-                System.out.println(text);
-                System.out.println(byteBufferToHex(networkMessage.dataBuffer().position(0)));
+//        byte fill = networkMessage.getByte();
+//        byte opCode = networkMessage.getByte();
+//        if (opCode == (byte) 0x96) { // say
+//            short speakClass = networkMessage.getByte(); // speak class
+//            if (speakClass == 1 /*say*/) {
+//
+//                String text = networkMessage.getString();
+//                System.out.println(text);
+//                System.out.println(byteBufferToHex(networkMessage.dataBuffer().position(0)));
 //                if (text.equals("hej")) {
 //                    XTEA.encrypt(networkMessage.dataBuffer(), gameState.getXteaKey());
 //                    queueToServer.add(networkMessage);
 //                }
-            }
-        }
+//            }
+//        }
     }
 
     public PacketsFromServer fromServer(Message networkMessage, boolean xtea) {
         if (xtea) {
             XTEA.decrypt(networkMessage.dataBuffer(), gameState.getXteaKey());
         }
+
         byte fillBytes = networkMessage.getByte();
 
         if (networkMessage.isZlibCompressed()) {
@@ -85,8 +88,8 @@ public class MessageInterpreter {
             // big question ?! - do we want to decompress fill bytes? I assume not.
             int newLimit = byteBuffer.limit() - fillBytes;
             // System.out.println("old limit: %d, new limit: %d".formatted(byteBuffer.limit(), newLimit));
-            byteBuffer.limit( newLimit); // limit the length by fill bytes
-            
+            byteBuffer.limit(newLimit); // limit the length by fill bytes
+
             ByteBuffer inflatedData = Zlib.inflate(byteBuffer);
 
             return new PacketsFromServer(networkMessage, inflatedData, true);
@@ -94,7 +97,7 @@ public class MessageInterpreter {
 
         ByteBuffer packetsBuffer = networkMessage.dataBuffer();
         packetsBuffer.get(); // skip fill bytes
-        packetsBuffer.limit( packetsBuffer.limit() - fillBytes);
+        packetsBuffer.limit(packetsBuffer.limit() - fillBytes);
 
         return new PacketsFromServer(networkMessage, packetsBuffer, false);
     }

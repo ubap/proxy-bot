@@ -97,7 +97,7 @@ public class Message {
     }
 
     public String getString() {
-        int  strlen = getShort();
+        int strlen = getShort();
         byte[] stringBackingArray = new byte[strlen];
         buffer.get(stringBackingArray);
         return new String(stringBackingArray);

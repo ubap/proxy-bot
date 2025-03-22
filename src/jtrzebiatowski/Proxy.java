@@ -2,9 +2,7 @@ package jtrzebiatowski;
 
 import jtrzebiatowski.bot.Bot;
 import jtrzebiatowski.game.GameState;
-import jtrzebiatowski.networkmessage.Message;
-import jtrzebiatowski.networkmessage.MessageFactory;
-import jtrzebiatowski.networkmessage.PacketsFromServer;
+import jtrzebiatowski.networkmessage.*;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,10 +13,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class Proxy {
 
-    ArrayBlockingQueue<Message> queueToServer = new ArrayBlockingQueue<>(100);
+    private final ArrayBlockingQueue<Message> queueToServer = new ArrayBlockingQueue<>(100);
 
-    GameState gameState = new GameState();
-    MessageFactory messageFactory = new MessageFactory(gameState);
+    private final GameState gameState = new GameState();
+    private final MessageFactory messageFactory = new MessageFactory(gameState);
 
     public Proxy(Socket socketToClient, Socket socketToServer) {
         MessageInterpreter messageInterpreter = new MessageInterpreter(queueToServer, gameState);
@@ -41,8 +39,7 @@ public class Proxy {
 
                     if (initialPacket) {
                         messageInterpreter.initialFromClient(messageFromClient);
-                    }
-                    else {
+                    } else {
                         messageInterpreter.fromClient(messageFromClient);
                     }
 
@@ -63,6 +60,10 @@ public class Proxy {
                     socketToClient.getOutputStream().write(message.getBackingArray(), 0, message.messageLength());
                     boolean useXtea = !initial;
                     PacketsFromServer packetsFromServer = messageInterpreter.fromServer(message, useXtea);
+
+                    // uncomment to debug
+                    // System.out.println(byteBufferToHex(packetsFromServer.getPacketsData()));
+
                     packetsFromServerInterpreter.process(packetsFromServer);
                     initial = false;
                 }
@@ -83,8 +84,7 @@ public class Proxy {
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-            }
-            catch (IOException e) {
+            } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         });
@@ -94,6 +94,8 @@ public class Proxy {
         serverThread.start();
 
         Bot bot = new Bot(this);
+        bot.start();
+
     }
 
 
