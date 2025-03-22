@@ -1,4 +1,26 @@
+package networkmessage;
+
+import java.util.Arrays;
+import java.util.concurrent.CountDownLatch;
+
 public class Game {
+
+    private int[] xteaExpandedKey;
+    private final CountDownLatch xteaSet = new CountDownLatch(1);
+
+    public void setXteaKey(int[] xteaExpandedKey) {
+        this.xteaExpandedKey = Arrays.copyOf(xteaExpandedKey, xteaExpandedKey.length);
+        xteaSet.countDown();
+    }
+
+    public int[] getXteaKey() {
+        try {
+            xteaSet.await();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        return xteaExpandedKey;
+    }
 
     private int maxHp;
     private int hp;

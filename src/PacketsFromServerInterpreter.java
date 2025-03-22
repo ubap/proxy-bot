@@ -1,3 +1,4 @@
+import networkmessage.Game;
 import networkmessage.PacketsFromServer;
 
 import java.nio.ByteBuffer;

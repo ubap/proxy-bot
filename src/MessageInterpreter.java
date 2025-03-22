@@ -1,26 +1,21 @@
 import encryption.RSADecode;
 import encryption.XTEA;
+import networkmessage.Game;
 import networkmessage.Message;
 import networkmessage.PacketsFromServer;
 
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.Arrays;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicIntegerArray;
-import java.util.zip.DataFormatException;
-import java.util.zip.Inflater;
 
 public class MessageInterpreter {
     ArrayBlockingQueue<Message> queueToServer;
 
-    int[] expandedKey;
-    CountDownLatch xteaSet = new CountDownLatch(1);
+    private final Game game;
 
-    MessageInterpreter(ArrayBlockingQueue<Message> queueToServer) {
+    MessageInterpreter(ArrayBlockingQueue<Message> queueToServer, Game game) {
         this.queueToServer = queueToServer;
+        this.game = game;
     }
 
     public void initialFromClient(Message message) {
@@ -42,8 +37,8 @@ public class MessageInterpreter {
         xteaKey[1] = message.getInt32();
         xteaKey[2] = message.getInt32();
         xteaKey[3] = message.getInt32();
-        expandedKey = XTEA.expandKey(xteaKey);
-        xteaSet.countDown();
+        int[] expandedKey = XTEA.expandKey(xteaKey);
+        game.setXteaKey(expandedKey);
 
         int gamemaster = message.getByte(); //gamemaster flag
 
@@ -57,7 +52,7 @@ public class MessageInterpreter {
     }
 
     public void fromClient(Message networkMessage) {
-        XTEA.decrypt(networkMessage.dataBuffer(), expandedKey);
+        XTEA.decrypt(networkMessage.dataBuffer(), game.getXteaKey());
         byte fill = networkMessage.getByte();
 
         byte opCode = networkMessage.getByte();
@@ -69,7 +64,7 @@ public class MessageInterpreter {
                 System.out.println(text);
                 System.out.println(byteBufferToHex(networkMessage.dataBuffer().position(0)));
                 if (text.equals("hej")) {
-                    XTEA.encrypt(networkMessage.dataBuffer(), expandedKey);
+                    XTEA.encrypt(networkMessage.dataBuffer(), game.getXteaKey());
                     queueToServer.add(networkMessage);
                 }
             }
@@ -78,12 +73,7 @@ public class MessageInterpreter {
 
     public PacketsFromServer fromServer(Message networkMessage, boolean xtea) {
         if (xtea) {
-            try {
-                xteaSet.await();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-            XTEA.decrypt(networkMessage.dataBuffer(), expandedKey);
+            XTEA.decrypt(networkMessage.dataBuffer(), game.getXteaKey());
         }
         byte fillBytes = networkMessage.getByte();
 

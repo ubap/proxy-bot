@@ -15,7 +15,7 @@ public class Message {
         buffer = ByteBuffer.allocate(1024 * 1024).order(ByteOrder.LITTLE_ENDIAN);
     }
 
-    private Message(byte[] backingArray, int limit) {
+    public Message(byte[] backingArray, int limit) {
 
         this.buffer = ByteBuffer.wrap(Arrays.copyOf(backingArray, limit), 0, limit).order(ByteOrder.LITTLE_ENDIAN);
 
