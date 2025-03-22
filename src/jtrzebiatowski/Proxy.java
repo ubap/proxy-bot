@@ -59,6 +59,7 @@ public class Proxy {
                     Message message = Message.readFromStream(input);
                     socketToClient.getOutputStream().write(message.getBackingArray(), 0, message.messageLength());
                     boolean useXtea = !initial;
+                    // todo - message interpreter in dedicated thread. it adds lag to the proxy
                     PacketsFromServer packetsFromServer = messageInterpreter.fromServer(message, useXtea);
 
                     // uncomment to debug
